@@ -5,11 +5,17 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.FilmAlreadyExistException;
+import ru.yandex.practicum.filmorate.exception.FilmNotFoundException;
+import ru.yandex.practicum.filmorate.exception.FilmValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/films")
@@ -17,30 +23,28 @@ public class FilmController {
 
     private final static Logger log = LoggerFactory.getLogger(FilmController.class);
 
-    private final HashSet<Film> films = new HashSet<>();
+    private final Map<Integer, Film> films = new HashMap<>();
 
     @GetMapping
-    public HashSet<Film> findAll() {
-        return films;
+    public List<Film> findAll() {
+        return new ArrayList<>(films.values());
     }
 
     @PostMapping
     public Film create(@RequestBody Film film) {
 
-        for (Film filmFromSet: films){
-            if (filmFromSet.equals(film)){
-                try {
-                    throw new FilmController.FilmAlreadyExistException("Данный фильм уже добавлен в базу");
-                } catch (FilmController.FilmAlreadyExistException exception){
-                    log.warn(exception.getMessage());
-                    return null;
-                }
+        if (films.containsKey(film.getId())){
+            try {
+                throw new FilmAlreadyExistException("Данный фильм уже добавлен в базу");
+            } catch (FilmAlreadyExistException exception){
+                log.warn(exception.getMessage());
+                return null;
             }
         }
 
         film = validation(film);
         film.setId(films.size()+1);
-        films.add(film);
+        films.put(film.getId(), film);
         log.info("Фильм {} добавлен в библиотеку под id {}", film.getName(), film.getId());
         return film;
     }
@@ -48,20 +52,15 @@ public class FilmController {
     @PutMapping
     public ResponseEntity<Film> putFilm(@RequestBody Film film) {
 
-        for (Film filmFromList: films){
-            if (filmFromList.equals(film)){
-                filmFromList.setDuration(film.getDuration());
-                filmFromList.setName(film.getName());
-                filmFromList.setReleaseDate(film.getReleaseDate());
-                filmFromList.setDescription(film.getDescription());
-                log.info("Информация о фильме {} под id {} изменена", film.getName(), film.getId());
-                return new ResponseEntity<>(film, HttpStatus.OK);
-            }
+        if (films.containsKey(film.getId())){
+            films.replace(film.getId(), film);
+            log.info("Информация о фильме {} под id {} изменена", film.getName(), film.getId());
+            return new ResponseEntity<>(film, HttpStatus.OK);
         }
 
         try {
-            throw new FilmController.FilmNotFoundException("Фильм не найден в базу");
-        } catch (FilmController.FilmNotFoundException exception){
+            throw new FilmNotFoundException("Фильм не найден в базе");
+        } catch (FilmNotFoundException exception){
             log.warn(exception.getMessage());
             return new ResponseEntity<>(film, HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -70,29 +69,29 @@ public class FilmController {
     public Film validation(Film film){
         if (film.getName().isBlank()){
             try {
-                throw new FilmController.FilmValidationException("Название фильма не может быть пустым");
-            } catch (FilmController.FilmValidationException exception){
+                throw new FilmValidationException("Название фильма не может быть пустым");
+            } catch (FilmValidationException exception){
                 log.warn(exception.getMessage());
                 return null;
             }
         } else if (film.getDescription().length() > 200){
             try {
-                throw new FilmController.FilmValidationException("Длина описания превышает 200 символов");
-            } catch (FilmController.FilmValidationException exception){
+                throw new FilmValidationException("Длина описания превышает 200 символов");
+            } catch (FilmValidationException exception){
                 log.warn(exception.getMessage());
                 return null;
             }
         } else if (film.getReleaseDate().isBefore(LocalDate.of(1895, Month.DECEMBER, 28))){
             try {
-                throw new FilmController.FilmValidationException("Дата релиза фильма раньше 28.12.1895");
-            } catch (FilmController.FilmValidationException exception){
+                throw new FilmValidationException("Дата релиза фильма раньше 28.12.1895");
+            } catch (FilmValidationException exception){
                 log.warn(exception.getMessage());
                 return null;
             }
         } else if (film.getDuration() < 0){
             try {
-                throw new FilmController.FilmValidationException("Продолжительность фильма должна быть положительной");
-            } catch (FilmController.FilmValidationException exception){
+                throw new FilmValidationException("Продолжительность фильма должна быть положительной");
+            } catch (FilmValidationException exception){
                 log.warn(exception.getMessage());
                 return null;
             }
@@ -101,21 +100,4 @@ public class FilmController {
         return film;
     }
 
-    static class FilmValidationException extends Exception{
-        public FilmValidationException(final String message) {
-            super(message);
-        }
-    }
-
-    static class FilmNotFoundException extends Exception{
-        public FilmNotFoundException(final String message) {
-            super(message);
-        }
-    }
-
-    static class FilmAlreadyExistException extends Exception{
-        public FilmAlreadyExistException(final String message) {
-            super(message);
-        }
-    }
 }

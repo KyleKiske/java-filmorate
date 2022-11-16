@@ -5,41 +5,42 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.yandex.practicum.filmorate.exception.UserAlreadyExistException;
+import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
+import ru.yandex.practicum.filmorate.exception.UserValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
-import java.util.HashSet;
+import java.util.*;
 
 @RestController
 @RequestMapping("/users")
-public class UserController  {
+public class UserController {
 
     private final static Logger log = LoggerFactory.getLogger(UserController.class);
 
-    private final HashSet<User> users = new HashSet<>();
+    private final Map<Integer, User> users = new HashMap<>();
 
     @GetMapping
-    public HashSet<User> findAll() {
-        return users;
+    public List<User> findAll() {
+        return new ArrayList<>(users.values());
     }
 
     @PostMapping
     public User create(@RequestBody User user) {
 
-        for (User userFromSet: users){
-            if (userFromSet.equals(user)){
-                try {
-                    throw new UserAlreadyExistException("Данный email уже зарегистрирован");
-                } catch (UserAlreadyExistException exception){
-                    log.warn(exception.getMessage());
-                    return user;
-                }
+        if (users.containsKey(user.getId())){
+            try {
+                throw new UserAlreadyExistException("Данный email уже зарегистрирован");
+            } catch (UserAlreadyExistException exception){
+                log.warn(exception.getMessage());
+                return user;
             }
         }
 
         user = validation(user);
         user.setId(users.size()+1);
-        users.add(user);
+        users.put(user.getId(), user);
         log.info("Создан новый пользователь с логином {} под id {}", user.getLogin(), user.getId());
         return user;
     }
@@ -47,15 +48,10 @@ public class UserController  {
     @PutMapping
     public ResponseEntity<User> putUser(@RequestBody User user) {
 
-        for (User userFromList: users){
-            if (userFromList.equals(user)){
-                userFromList.setLogin(user.getLogin());
-                userFromList.setName(user.getName());
-                userFromList.setBirthday(user.getBirthday());
-                userFromList.setEmail(user.getEmail());
-                log.info("Информация о пользователе {} была изменена", userFromList.getId());
-                return new ResponseEntity<>(user, HttpStatus.OK);
-            }
+        if (users.containsKey(user.getId())){
+            users.replace(user.getId(), user);
+            log.info("Информация о пользователе {} была изменена", user.getId());
+            return new ResponseEntity<>(user, HttpStatus.OK);
         }
 
         try {
@@ -91,30 +87,5 @@ public class UserController  {
         }
         return user;
     }
-
-    static class UserAlreadyExistException extends Exception{
-        public UserAlreadyExistException(final String message) {
-            super(message);
-        }
-    }
-
-    static class UserNotFoundException extends Exception{
-        public UserNotFoundException(final String message) {
-            super(message);
-        }
-    }
-
-    static class UserValidationException extends Exception{
-        public UserValidationException(final String message) {
-            super(message);
-        }
-    }
-
-    static class InvalidEmailException  extends Exception{
-        public InvalidEmailException (final String message) {
-            super(message);
-        }
-    }
-
 
 }
