@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.service;
 
+import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,92 +63,73 @@ public class UserService {
             log.info("Создан новый пользователь с логином {} под id {}", user.getLogin(), user.getId());
             return new ResponseEntity<>(user, HttpStatus.OK);
         } else {
-            try {
-                throw new UserValidationException(result);
-            } catch (UserValidationException e) {
-                return new ResponseEntity<>(user, HttpStatus.BAD_REQUEST);
-            }
+            return new ResponseEntity<>(user, HttpStatus.BAD_REQUEST);
         }
     }
 
     public ResponseEntity<User> putUser(User user) {
         if (userStorage.getUsers().containsKey(user.getId())){
-            Set<Long> friends = userStorage.getUsers().get(user.getId()).getFriends();
+            Set<Long> friends = userStorage.getUsers().get(user.getId()).getFriendIds();
             userStorage.getUsers().replace(user.getId(), user);
-            userStorage.getUsers().get(user.getId()).setFriends(friends);
+            userStorage.getUsers().get(user.getId()).setFriendIds(friends);
             log.info("Информация о пользователе {} была изменена", user.getId());
             return new ResponseEntity<>(user, HttpStatus.OK);
         }
-
-        try {
-            throw new UserNotFoundException("Пользователя с id " + user.getId() + " не существует");
-        } catch (UserNotFoundException exception){
-            log.warn(exception.getMessage());
-            return new ResponseEntity<>(user, HttpStatus.NOT_FOUND);
-        }
-
+        log.warn("Пользователя с id " + user.getId() + " не существует");
+        return new ResponseEntity<>(user, HttpStatus.NOT_FOUND);
     }
 
     public String addFriend(Long id, Long friendId){
         if (userStorage.getUsers().containsKey(id)){
             if (userStorage.getUsers().containsKey(friendId)){
-                userStorage.getUsers().get(id).getFriends().add(friendId);
-                userStorage.getUsers().get(friendId).getFriends().add(id);
+                userStorage.getUsers().get(id).getFriendIds().add(friendId);
+                userStorage.getUsers().get(friendId).getFriendIds().add(id);
             } else {
-                try {
-                    throw new UserNotFoundException("пользователя с id " + friendId + " не существует");
-                } catch (UserNotFoundException ignored) {
+                    log.warn("пользователя с id " + friendId + " не существует");
                     return friendId.toString();
-                }
             }
         } else {
-            try {
-                throw new UserNotFoundException("пользователя с id " + id + " не существует");
-            } catch (UserNotFoundException ignored) {
-                return id.toString();
-            }
+            log.warn("пользователя с id " + id + " не существует");
+            return id.toString();
         }
         log.info("Пользователи " + id + " и " + friendId + " добавлены в друзья");
         return "Пользователи " + id + " и " + friendId + " добавлены в друзья";
     }
 
-    public void removeFriend(Long id, Long friendId){
+    @SneakyThrows
+    public void removeFriend(Long id, Long friendId) {
         if (userStorage.getUsers().containsKey(id)){
             if (userStorage.getUsers().containsKey(friendId)){
                 User first = userStorage.getUsers().get(id);
                 User second = userStorage.getUsers().get(friendId);
                 Set<Long> mainSet = new HashSet<>();
                 Set<Long> friendSet = new HashSet<>();
-                if (first.getFriends() != null){
-                    mainSet = first.getFriends();
+                if (first.getFriendIds() != null){
+                    mainSet = first.getFriendIds();
                 }
-                if (second.getFriends() != null){
-                    friendSet = new HashSet<>(second.getFriends());
+                if (second.getFriendIds() != null){
+                    friendSet = (second.getFriendIds());
                 }
                 mainSet.remove(friendId);
                 friendSet.remove(id);
-                first.setFriends(mainSet);
-                second.setFriends(friendSet);
+                first.setFriendIds(mainSet);
+                second.setFriendIds(friendSet);
                 userStorage.getUsers().replace(id, first);
                 userStorage.getUsers().replace(friendId, second);
             } else {
-                try {
-                    throw new UserNotFoundException("пользователя с id " + friendId + " не существует");
-                } catch (UserNotFoundException ignored) {
-                }
+                log.warn("Пользователя с id " + friendId + " не существует");
+                throw new UserNotFoundException("Пользователя с id " + friendId + " не существует");
             }
         } else {
-            try {
-                throw new UserNotFoundException("пользователя с id " + id + " не существует");
-            } catch (UserNotFoundException ignored) {
-            }
+            log.warn("Пользователя с id " + id + " не существует");
+            throw new UserNotFoundException("Пользователя с id " + id + " не существует");
         }
         log.info("Пользователи " + id + " и " + friendId + " удалены из друзей");
     }
 
     public ResponseEntity<List<User>> showFriends(Long id) {
         if (userStorage.getUsers().containsKey(id)) {
-            Set<Long> friends = userStorage.getUsers().get(id).getFriends();
+            Set<Long> friends = userStorage.getUsers().get(id).getFriendIds();
             List<User> result = userStorage.getUsers().values()
                     .stream()
                     .filter(user -> friends.contains(user.getId()))
@@ -160,12 +142,12 @@ public class UserService {
 
     public ResponseEntity<List<User>> showMutualFriends(Long primaryId, Long secondaryId) {
         if (userStorage.getUsers().containsKey(primaryId) && userStorage.getUsers().containsKey(secondaryId) ) {
-            Set<Long> friends = userStorage.getUsers().get(primaryId).getFriends();
+            Set<Long> friends = userStorage.getUsers().get(primaryId).getFriendIds();
             if (friends == null){
                 return new ResponseEntity<>(new ArrayList<>(), HttpStatus.OK);
             }
             Set<Long> intersection = friends.stream()
-                    .filter(userStorage.getUsers().get(secondaryId).getFriends()::contains)
+                    .filter(userStorage.getUsers().get(secondaryId).getFriendIds()::contains)
                     .collect(Collectors.toSet());
             List<User> result = userStorage.getUsers().values()
                     .stream()
@@ -198,7 +180,7 @@ public class UserService {
         } else if (user.getName().isBlank()) {
             user.setName(user.getLogin());
         }
-        user.setFriends(new HashSet<>());
+        user.setFriendIds(new HashSet<>());
         return null;
     }
 }

@@ -1,7 +1,6 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
@@ -10,6 +9,7 @@ import ru.yandex.practicum.filmorate.service.UserService;
 
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/users")
 public class UserController {
@@ -19,8 +19,6 @@ public class UserController {
     public UserController(UserService userService){
         this.userService = userService;
     }
-
-    private final static Logger log = LoggerFactory.getLogger(UserController.class);
 
     @GetMapping
     public List<User> findAll() {

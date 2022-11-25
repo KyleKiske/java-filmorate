@@ -70,11 +70,7 @@ public class FilmService {
             log.info("Фильм {} добавлен в библиотеку под id {}", film.getName(), film.getId());
             return new ResponseEntity<>(film, HttpStatus.OK);
         } else {
-            try {
-                throw new FilmValidationException(result);
-            } catch (FilmValidationException e) {
-                return new ResponseEntity<>(film, HttpStatus.BAD_REQUEST);
-            }
+            return new ResponseEntity<>(film, HttpStatus.BAD_REQUEST);
         }
     }
 
@@ -86,13 +82,8 @@ public class FilmService {
             log.info("Информация о фильме {} под id {} изменена", film.getName(), film.getId());
             return new ResponseEntity<>(film, HttpStatus.OK);
         }
-
-        try {
-            throw new FilmNotFoundException("Фильм не найден в базе");
-        } catch (FilmNotFoundException exception){
-            log.warn(exception.getMessage());
-            return new ResponseEntity<>(film, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
+        log.warn("Фильм" + film.getId() + "не найден в базе");
+        return new ResponseEntity<>(film, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     public ResponseEntity<String> likeFilm(int filmId, long userId){
@@ -123,19 +114,12 @@ public class FilmService {
         return new ResponseEntity<>("", HttpStatus.OK);
     }
 
-    public List<Film> mostPopularFilms(@RequestParam Optional<Integer> count){
-        List<Film> mostPopularFilms;
-        mostPopularFilms = count.map(integer -> filmStorage.getFilms().values()
+    public List<Film> mostPopularFilms(@RequestParam Integer count){
+        return filmStorage.getFilms().values()
                 .stream()
                 .sorted(Film::compareTo)
-                .limit(integer)
-                .collect(Collectors.toList())).orElseGet(() -> filmStorage.getFilms().values()
-                .stream()
-                .sorted(Film::compareTo)
-                .limit(10)
-                .collect(Collectors.toList()));
-
-        return mostPopularFilms;
+                .limit(count)
+                .collect(Collectors.toList());
     }
 
     public String validation(Film film){

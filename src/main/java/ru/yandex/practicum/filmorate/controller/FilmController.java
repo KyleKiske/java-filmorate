@@ -1,15 +1,14 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.FilmService;
 
 import java.util.List;
-import java.util.Optional;
 
+@Slf4j
 @RestController
 @RequestMapping("/films")
 public class FilmController {
@@ -19,8 +18,6 @@ public class FilmController {
     public FilmController(FilmService filmService){
         this.filmService = filmService;
     }
-
-    private final static Logger log = LoggerFactory.getLogger(FilmController.class);
 
     @GetMapping
     public List<Film> findAll() {
@@ -35,12 +32,12 @@ public class FilmController {
 
     @DeleteMapping("/{id}/like/{userId}")
     public ResponseEntity<String> unlikeFilm(@PathVariable int id,
-                         @PathVariable long userId){
+                                             @PathVariable long userId){
         return filmService.unlikeFilm(id, userId);
     }
 
     @GetMapping("/popular")
-    public List<Film> getPopularFilms(@RequestParam Optional<Integer> count){
+    public List<Film> getPopularFilms(@RequestParam(defaultValue = "10") Integer count){
         return filmService.mostPopularFilms(count);
     }
 
