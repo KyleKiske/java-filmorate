@@ -1,91 +1,69 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpStatus;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.filmorate.exception.UserAlreadyExistException;
 import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
-import ru.yandex.practicum.filmorate.exception.UserValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.UserService;
 
-import java.time.LocalDate;
-import java.util.*;
+import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/users")
 public class UserController {
 
-    private final static Logger log = LoggerFactory.getLogger(UserController.class);
+    private final UserService userService;
 
-    private final Map<Integer, User> users = new HashMap<>();
+    public UserController(UserService userService){
+        this.userService = userService;
+    }
 
     @GetMapping
     public List<User> findAll() {
-        return new ArrayList<>(users.values());
+        return userService.findAll();
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
+    public ResponseEntity<User> create(@RequestBody User user) {
+        return userService.createUser(user);
+    }
 
-        if (users.containsKey(user.getId())){
-            try {
-                throw new UserAlreadyExistException("Данный email уже зарегистрирован");
-            } catch (UserAlreadyExistException exception){
-                log.warn(exception.getMessage());
-                return user;
-            }
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUser(@PathVariable Long id){
+        return userService.getUser(id);
+    }
+
+    @PutMapping("/{id}/friends/{friendId}")
+    public void addFriend(@PathVariable long id,
+                          @PathVariable long friendId) throws UserNotFoundException {
+        String addedStatus = userService.addFriend(id, friendId);
+        if (!addedStatus.equals("Пользователи " + id + " и " + friendId + " добавлены в друзья")){
+            throw new UserNotFoundException("Пользователя с id " + addedStatus + " не существует.");
         }
+    }
 
-        user = validation(user);
-        user.setId(users.size()+1);
-        users.put(user.getId(), user);
-        log.info("Создан новый пользователь с логином {} под id {}", user.getLogin(), user.getId());
-        return user;
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public void removeFriend(@PathVariable long id,
+                             @PathVariable long friendId){
+        userService.removeFriend(id, friendId);
+    }
+
+    @GetMapping("/{id}/friends")
+    public ResponseEntity<List<User>> getFriends(@PathVariable long id){
+        return userService.showFriends(id);
+    }
+
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public ResponseEntity<List<User>> getMutualFriends(@PathVariable long id,
+                                                       @PathVariable long otherId){
+        return userService.showMutualFriends(id, otherId);
     }
 
     @PutMapping
     public ResponseEntity<User> putUser(@RequestBody User user) {
-
-        if (users.containsKey(user.getId())){
-            users.replace(user.getId(), user);
-            log.info("Информация о пользователе {} была изменена", user.getId());
-            return new ResponseEntity<>(user, HttpStatus.OK);
-        }
-
-        try {
-            throw new UserNotFoundException("Пользователя с id " + user.getId() + " не существует");
-        } catch (UserNotFoundException exception){
-            log.warn(exception.getMessage());
-            return new ResponseEntity<>(user, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
-    }
-
-    public User validation(User user){
-        if (user.getLogin().isBlank() || user.getLogin().contains(" ")){
-            try {
-                throw new UserValidationException("Введен неверный логин");
-            } catch (UserValidationException exception){
-                log.warn(exception.getMessage());
-                return null;
-            }
-        } else if ( user.getBirthday().isAfter(LocalDate.now())) {
-            try {
-                throw new UserValidationException("Введенная дата рождения позже текущего дня");
-            } catch (UserValidationException exception){
-                log.warn(exception.getMessage());
-                return null;
-            }
-        }
-
-        if (user.getName() == null){
-            user.setName(user.getLogin());
-        } else if (user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
-        return user;
+        return userService.putUser(user);
     }
 
 }
