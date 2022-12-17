@@ -1,158 +1,76 @@
 package ru.yandex.practicum.filmorate.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import ru.yandex.practicum.filmorate.controller.FilmController;
-import ru.yandex.practicum.filmorate.exception.*;
+import ru.yandex.practicum.filmorate.dao.DBFilmRepository;
+import ru.yandex.practicum.filmorate.dao.DBUserRepository;
+import ru.yandex.practicum.filmorate.exception.FilmNotFoundException;
+import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.storage.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.InMemoryFilmStorage;
-import ru.yandex.practicum.filmorate.storage.InMemoryUserStorage;
-import ru.yandex.practicum.filmorate.storage.UserStorage;
+import ru.yandex.practicum.filmorate.repository.FilmRepository;
+import ru.yandex.practicum.filmorate.repository.UserRepository;
 
-import java.time.LocalDate;
-import java.time.Month;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Optional;
 
 @Service
+@Slf4j
 public class FilmService {
 
-    private final FilmStorage filmStorage;
-
-    private final UserStorage userStorage;
+    private final FilmRepository filmRepository;
+    private final UserRepository userRepository;
 
     @Autowired
-    public FilmService(InMemoryFilmStorage filmStorage, InMemoryUserStorage userStorage) {
-        this.filmStorage = filmStorage;
-        this.userStorage = userStorage;
-    }
-
-    private final static Logger log = LoggerFactory.getLogger(FilmController.class);
-
-    public ResponseEntity<Film> getFilm(int id){
-        Film film = filmStorage.getFilms().get(id);
-        if (film == null){
-            try {
-                throw new FilmNotFoundException("Фильм с id " + id + " не найден");
-            } catch (FilmNotFoundException exception){
-                log.warn(exception.getMessage());
-                return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
-            }
-        }
-        return new ResponseEntity<>(film, HttpStatus.OK);
+    public FilmService(DBFilmRepository filmRepository, DBUserRepository userRepository) {
+        this.filmRepository = filmRepository;
+        this.userRepository = userRepository;
     }
 
     public List<Film> findAll() {
-        return new ArrayList<>(filmStorage.getFilms().values());
+        return filmRepository.getFilms();
     }
 
-    public ResponseEntity<Film> create(@RequestBody Film film) {
-        if (filmStorage.getFilms().containsKey(film.getId())){
-            try {
-                throw new FilmAlreadyExistException("Данный фильм уже добавлен в базу");
-            } catch (FilmAlreadyExistException exception){
-                log.warn(exception.getMessage());
-                return new ResponseEntity<>(film, HttpStatus.BAD_REQUEST);
-            }
+    public Optional<Film> getFilm(int id){
+        Optional<Film> film = filmRepository.getFilmById(id);
+        if (film.isEmpty()){
+            throw new FilmNotFoundException("Фильм с id " + id + " не найден");
         }
+        return film;
+    }
 
-        String result = validation(film);
-        if (result == null){
-            film.setId(filmStorage.getFilms().size()+1);
-            filmStorage.getFilms().put(film.getId(), film);
-            log.info("Фильм {} добавлен в библиотеку под id {}", film.getName(), film.getId());
-            return new ResponseEntity<>(film, HttpStatus.OK);
+    public Film createFilm(Film film) {
+        return filmRepository.createFilm(film);
+    }
+
+    public Film updateFilm(Film film) {
+        boolean changed = filmRepository.updateFilm(film);
+        if (!changed){
+            log.warn("Фильм " + film.getId() + " не найден в базе");
+            throw new FilmNotFoundException("Фильм " + film.getId() + " не найден в базе");
+        }
+        log.info("Информация о фильме {} под id {} изменена", film.getName(), film.getId());
+        return film;
+    }
+
+    public void likeFilm(int filmId, long userId){
+        if (userRepository.getUserById(userId).isPresent()){
+            filmRepository.likeFilm(filmId, userId);
         } else {
-            return new ResponseEntity<>(film, HttpStatus.BAD_REQUEST);
+            throw new UserNotFoundException("Пользователь с id " + userId + "не найден.");
         }
     }
 
-    public ResponseEntity<Film> putFilm(@RequestBody Film film) {
-        Set<Long> likes = filmStorage.getFilms().get(film.getId()).getLikes();
-        if (filmStorage.getFilms().containsKey(film.getId())){
-            filmStorage.getFilms().replace(film.getId(), film);
-            filmStorage.getFilms().get(film.getId()).setLikes(likes);
-            log.info("Информация о фильме {} под id {} изменена", film.getName(), film.getId());
-            return new ResponseEntity<>(film, HttpStatus.OK);
-        }
-        log.warn("Фильм" + film.getId() + "не найден в базе");
-        return new ResponseEntity<>(film, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    public ResponseEntity<String> likeFilm(int filmId, long userId){
-        if (userStorage.getUsers().containsKey(userId)){
-            filmStorage.getFilms().get(filmId).getLikes().add(userId);
+    public void unlikeFilm(int filmId, long userId){
+        if (userRepository.getUserById(userId).isPresent()){
+            filmRepository.unlikeFilm(filmId, userId);
         } else {
-            try {
-                throw new UserNotFoundException("Пользователь с id " + userId + "не найден.");
-            } catch (UserNotFoundException e) {
-                return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-            }
-
+            throw new UserNotFoundException("Пользователь с id " + userId + "не найден.");
         }
-        return new ResponseEntity<>("", HttpStatus.OK);
     }
 
-    public ResponseEntity<String> unlikeFilm(int filmId, long userId){
-        if (userStorage.getUsers().containsKey(userId)){
-            filmStorage.getFilms().get(filmId).getLikes().remove(userId);
-        } else {
-            try {
-                throw new UserNotFoundException("Пользователь с id " + userId + "не найден.");
-            } catch (UserNotFoundException e) {
-                return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
-            }
-
-        }
-        return new ResponseEntity<>("", HttpStatus.OK);
+    public List<Film> mostPopularFilms(int count){
+        return filmRepository.getPopular(count);
     }
 
-    public List<Film> mostPopularFilms(@RequestParam Integer count){
-        return filmStorage.getFilms().values()
-                .stream()
-                .sorted(Film::compareTo)
-                .limit(count)
-                .collect(Collectors.toList());
-    }
-
-    public String validation(Film film){
-        if (film.getName().isBlank()){
-            try {
-                throw new FilmValidationException("Название фильма не может быть пустым");
-            } catch (FilmValidationException exception){
-                log.warn(exception.getMessage());
-                return exception.getMessage();
-            }
-        } else if (film.getDescription().length() > 200){
-            try {
-                throw new FilmValidationException("Длина описания превышает 200 символов");
-            } catch (FilmValidationException exception){
-                log.warn(exception.getMessage());
-                return exception.getMessage();
-            }
-        } else if (film.getReleaseDate().isBefore(LocalDate.of(1895, Month.DECEMBER, 28))){
-            try {
-                throw new FilmValidationException("Дата релиза фильма раньше 28.12.1895");
-            } catch (FilmValidationException exception){
-                log.warn(exception.getMessage());
-                return exception.getMessage();
-            }
-        } else if (film.getDuration() < 0){
-            try {
-                throw new FilmValidationException("Продолжительность фильма должна быть положительной");
-            } catch (FilmValidationException exception){
-                log.warn(exception.getMessage());
-                return exception.getMessage();
-            }
-        }
-
-        return null;
-    }
 }
