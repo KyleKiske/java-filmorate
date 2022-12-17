@@ -8,15 +8,15 @@ import java.util.Optional;
 
 @Repository
 public interface FilmRepository {
-    List<Film> getFilms();
+    List<Optional<Film>> getFilms();
 
-    List<Film> getPopular(int count);
+    List<Optional<Film>> getPopular(int count);
 
     Optional<Film> getFilmById(int id);
 
-    Film createFilm(Film film);
+    Optional<Film> createFilm(Film film);
 
-    boolean updateFilm(Film film);
+    boolean updateFilm(Optional<Film> film);
 
     void likeFilm(int filmId, long userId);
 

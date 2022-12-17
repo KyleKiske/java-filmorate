@@ -11,9 +11,9 @@ public interface UserRepository {
 
     Optional<User> getUserById(Long id);
 
-    User createUser(User user);
+    Optional<User> createUser(User user);
 
-    List<User> getUsers();
+    List<Optional<User>> getUsers();
 
     boolean deleteUser(long id);
 
@@ -21,9 +21,9 @@ public interface UserRepository {
 
     int addFriend(Long id, Long friendId);
 
-    List<User> getFriendsById(Long id);
+    List<Optional<User>> getFriendsById(Long id);
 
-    List<User> getCommonFriends(Long primaryId, Long secondaryId);
+    List<Optional<User>> getCommonFriends(Long primaryId, Long secondaryId);
 
     void deleteFriend(long primaryId, long secondaryId);
 }

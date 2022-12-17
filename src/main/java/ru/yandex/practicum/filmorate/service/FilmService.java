@@ -27,7 +27,7 @@ public class FilmService {
         this.userRepository = userRepository;
     }
 
-    public List<Film> findAll() {
+    public List<Optional<Film>> findAll() {
         return filmRepository.getFilms();
     }
 
@@ -39,18 +39,18 @@ public class FilmService {
         return film;
     }
 
-    public Film createFilm(Film film) {
+    public Optional<Film> createFilm(Film film) {
         return filmRepository.createFilm(film);
     }
 
-    public Film updateFilm(Film film) {
-        boolean changed = filmRepository.updateFilm(film);
+    public Optional<Film> updateFilm(Film film) {
+        boolean changed = filmRepository.updateFilm(Optional.ofNullable(film));
         if (!changed){
             log.warn("Фильм " + film.getId() + " не найден в базе");
             throw new FilmNotFoundException("Фильм " + film.getId() + " не найден в базе");
         }
         log.info("Информация о фильме {} под id {} изменена", film.getName(), film.getId());
-        return film;
+        return Optional.of(film);
     }
 
     public void likeFilm(int filmId, long userId){
@@ -69,7 +69,7 @@ public class FilmService {
         }
     }
 
-    public List<Film> mostPopularFilms(int count){
+    public List<Optional<Film>> mostPopularFilms(int count){
         return filmRepository.getPopular(count);
     }
 

@@ -20,12 +20,12 @@ public class UserController {
     }
 
     @GetMapping
-    public List<User> findAll() {
+    public List<Optional<User>> findAll() {
         return userService.findAll();
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
+    public Optional<User> create(@RequestBody User user) {
         return userService.createUser(user);
     }
 
@@ -47,18 +47,18 @@ public class UserController {
     }
 
     @GetMapping("/{id}/friends")
-    public List<User> getFriends(@PathVariable long id){
+    public List<Optional<User>> getFriends(@PathVariable long id){
         return userService.showFriends(id);
     }
 
     @GetMapping("/{id}/friends/common/{otherId}")
-    public List<User> getMutualFriends(@PathVariable long id,
+    public List<Optional<User>> getMutualFriends(@PathVariable long id,
                                        @PathVariable long otherId){
         return userService.showMutualFriends(id, otherId);
     }
 
     @PutMapping
-    public User putUser(@RequestBody User user) {
+    public Optional<User> putUser(@RequestBody User user) {
         return userService.putUser(user);
     }
 

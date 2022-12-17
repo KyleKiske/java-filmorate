@@ -31,14 +31,14 @@ public class DBFilmRepository implements FilmRepository {
         this.validationService = validationService;
     }
 
-    public Film mapRowToFilm(ResultSet rs, int rowNum) throws SQLException {
+    public Optional<Film> mapRowToFilm(ResultSet rs, int rowNum) throws SQLException {
         int id = rs.getInt("FILM_ID");
-        return new Film(id, rs.getString("NAME"),
-                            rs.getString("DESCRIPTION"),
-                            rs.getDate("RELEASE_DATE").toLocalDate(),
-                            rs.getInt("DURATION"),
-                            new MPA(rs.getInt("MPA"),
-                            rs.getString("MPA_NAME")), findGenresByFilmId(id));
+        return Optional.of(new Film(id, rs.getString("NAME"),
+                rs.getString("DESCRIPTION"),
+                rs.getDate("RELEASE_DATE").toLocalDate(),
+                rs.getInt("DURATION"),
+                new MPA(rs.getInt("MPA"),
+                        rs.getString("MPA_NAME")), findGenresByFilmId(id)));
     }
 
     public List<Genre> findGenresByFilmId(int filmId){
@@ -53,7 +53,7 @@ public class DBFilmRepository implements FilmRepository {
     }
 
     @Override
-    public List<Film> getFilms() {
+    public List<Optional<Film>> getFilms() {
         final String sqlQuery = "SELECT FILM.FILM_ID, FILM.NAME, " +
                 "DESCRIPTION, RELEASE_DATE, DURATION, MPA, M.MPA_NAME FROM FILM " +
         "JOIN MPA AS M on M.MPA_ID = FILM.MPA";
@@ -61,7 +61,7 @@ public class DBFilmRepository implements FilmRepository {
     }
 
     @Override
-    public List<Film> getPopular(int count) {
+    public List<Optional<Film>> getPopular(int count) {
         final String sqlQuery = "SELECT FILM.FILM_ID, FILM.NAME, " +
                 "DESCRIPTION, RELEASE_DATE, DURATION, MPA, M.MPA_NAME FROM FILM " +
                 "JOIN MPA AS M on M.MPA_ID = FILM.MPA " +
@@ -80,22 +80,25 @@ public class DBFilmRepository implements FilmRepository {
                 "LEFT JOIN FILM_GENRE FG on FILM.FILM_ID = FG.FILM_ID " +
                 "LEFT JOIN GENRE G2 on G2.GENRE_ID = FG.GENRE_ID " +
                 "WHERE FILM.FILM_ID = ?";
-        List<Film> films = jdbcTemplate.query(sqlQuery, this::mapRowToFilm, id);
-        System.out.println("FS = " + films.size());
-        if(films.size() == 0) {
+        List<Optional<Film>> filmsOptional = jdbcTemplate.query(sqlQuery, this::mapRowToFilm, id);
+        List<Film> films = new ArrayList<>();
+        for (Optional<Film> f: filmsOptional){
+            films.add(f.get());
+        }
+        if(filmsOptional.size() == 0) {
             return Optional.empty();
-        } else if (films.size() != 1){
+        } else if (filmsOptional.size() != 1){
             Film film = films.get(0);
             List<Genre> genres = filterUniqueGenre(films);
             film.setGenres(genres);
             return Optional.of(film);
         } else {
-            return Optional.of(films.get(0));
+            return filmsOptional.get(0);
         }
     }
 
     @Override
-    public Film createFilm(Film film) {
+    public Optional<Film> createFilm(Film film) {
         Film validatedFilm = validationService.validateFilm(film);
         String sqlQuery = "insert into FILM (NAME, DESCRIPTION, RELEASE_DATE, DURATION, MPA) values (?,?,?,?,?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -116,7 +119,7 @@ public class DBFilmRepository implements FilmRepository {
             }
         }
         film.setId(Objects.requireNonNull(keyHolder.getKey()).intValue());
-        return film;
+        return Optional.of(film);
     }
 
     @Override
@@ -132,7 +135,8 @@ public class DBFilmRepository implements FilmRepository {
     }
 
     @Override
-    public boolean updateFilm(Film film) {
+    public boolean updateFilm(Optional<Film> optionalFilm) {
+        Film film = optionalFilm.get();
         boolean genreChanged;
         String sqlQuery = "update FILM " +
                 "set NAME = ?, DESCRIPTION = ?, RELEASE_DATE = ?, DURATION = ?, MPA = ? " +

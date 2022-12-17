@@ -22,7 +22,7 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public List<User> findAll() {
+    public List<Optional<User>> findAll() {
         return userRepository.getUsers();
     }
 
@@ -36,17 +36,17 @@ public class UserService {
         return user;
     }
 
-    public User createUser(User user) {
+    public Optional<User> createUser(User user) {
         return userRepository.createUser(user);
     }
 
-    public User putUser(User user) {
+    public Optional<User> putUser(User user) {
         boolean changed = userRepository.updateUser(user);
         if (!changed){
             log.warn("Пользователя с id " + user.getId() + " не существует");
             throw new UserNotFoundException("Пользователя с id " + user.getId() + " не существует");
         }
-        return user;
+        return Optional.ofNullable(user);
     }
 
     public void addFriend(Long id, Long friendId){
@@ -61,11 +61,11 @@ public class UserService {
         userRepository.deleteFriend(id, friendId);
     }
 
-    public List<User> showFriends(Long id) {
+    public List<Optional<User>> showFriends(Long id) {
         return userRepository.getFriendsById(id);
     }
 
-    public List<User> showMutualFriends(Long primaryId, Long secondaryId) {
+    public List<Optional<User>> showMutualFriends(Long primaryId, Long secondaryId) {
         return userRepository.getCommonFriends(primaryId, secondaryId);
     }
 }

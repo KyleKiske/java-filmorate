@@ -50,17 +50,17 @@ public class DBUserRepository implements UserRepository {
         }
     }
 
-    private static User mapRowToUser(ResultSet rs, long rowNum) throws SQLException {
-        return User.builder()
+    private static Optional<User> mapRowToUser(ResultSet rs, long rowNum) throws SQLException {
+        return Optional.ofNullable(User.builder()
                 .id(rs.getLong("USER_ID"))
                 .email(rs.getString("EMAIL"))
                 .login(rs.getString("LOGIN"))
                 .name(rs.getString("NAME"))
                 .birthday(rs.getDate("BIRTHDAY").toLocalDate())
-                .build();
+                .build());
     }
     @Override
-    public User createUser(User user) {
+    public Optional<User> createUser(User user) {
         User validatedUser = validationService.validateUser(user);
         String sqlQuery = "insert into USERS (EMAIL, LOGIN, NAME, BIRTHDAY) values (?,?,?,?)";
 
@@ -79,11 +79,11 @@ public class DBUserRepository implements UserRepository {
             return stmt;
         }, keyHolder);
         user.setId(Objects.requireNonNull(keyHolder.getKey()).longValue());
-        return user;
+        return Optional.of(user);
     }
 
     @Override
-    public List<User> getUsers() {
+    public List<Optional<User>> getUsers() {
         final String sqlQuery = "select USER_ID, EMAIL, LOGIN, NAME, BIRTHDAY from USERS";
         return jdbcTemplate.query(sqlQuery, DBUserRepository::mapRowToUser);
     }
@@ -120,7 +120,7 @@ public class DBUserRepository implements UserRepository {
     }
 
     @Override
-    public List<User> getFriendsById(Long id) {
+    public List<Optional<User>> getFriendsById(Long id) {
         final String sqlQuery =
                 "SELECT u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY " +
                         "FROM FRIEND AS f " +
@@ -130,7 +130,7 @@ public class DBUserRepository implements UserRepository {
     }
 
     @Override
-    public List<User> getCommonFriends(Long primaryId, Long secondaryId) {
+    public List<Optional<User>> getCommonFriends(Long primaryId, Long secondaryId) {
         final String sqlQuery =
                 "SELECT PrimaryUserFriends.USER_ID, " +
                         "PrimaryUserFriends.EMAIL, " +

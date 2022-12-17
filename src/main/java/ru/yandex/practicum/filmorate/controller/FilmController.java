@@ -18,7 +18,7 @@ public class FilmController {
     }
 
     @GetMapping
-    public List<Film> findAll() {
+    public List<Optional<Film>> findAll() {
         return filmService.findAll();
     }
 
@@ -35,12 +35,12 @@ public class FilmController {
     }
 
     @GetMapping("/popular")
-    public List<Film> getPopularFilms(@RequestParam(defaultValue = "10") Integer count){
+    public List<Optional<Film>> getPopularFilms(@RequestParam(defaultValue = "10") Integer count){
         return filmService.mostPopularFilms(count);
     }
 
     @PostMapping
-    public Film create(@RequestBody Film film) {
+    public Optional<Film> create(@RequestBody Film film) {
         return filmService.createFilm(film);
     }
 
@@ -50,7 +50,7 @@ public class FilmController {
     }
 
     @PutMapping
-    public Film putFilm(@RequestBody Film film) {
+    public Optional<Film> putFilm(@RequestBody Film film) {
         return filmService.updateFilm(film);
     }
 
