@@ -13,6 +13,7 @@ import ru.yandex.practicum.filmorate.repository.UserRepository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -27,30 +28,35 @@ public class FilmService {
         this.userRepository = userRepository;
     }
 
-    public List<Optional<Film>> findAll() {
-        return filmRepository.getFilms();
+    public List<Film> findAll() {
+            return filmRepository.getFilms().stream()
+                    .flatMap(Optional::stream)
+                    .collect(Collectors.toList());
     }
 
-    public Optional<Film> getFilm(int id){
+    public Film getFilm(int id){
         Optional<Film> film = filmRepository.getFilmById(id);
-        if (film.isEmpty()){
+        if (film.isPresent()) {
+            return film.get();
+        } else {
             throw new FilmNotFoundException("Фильм с id " + id + " не найден");
         }
-        return film;
     }
 
-    public Optional<Film> createFilm(Film film) {
+    public Film createFilm(Film film) {
         return filmRepository.createFilm(film);
     }
 
-    public Optional<Film> updateFilm(Film film) {
+    public Film updateFilm(Film film) {
         boolean changed = filmRepository.updateFilm(Optional.ofNullable(film));
         if (!changed){
+            assert film != null;
             log.warn("Фильм " + film.getId() + " не найден в базе");
             throw new FilmNotFoundException("Фильм " + film.getId() + " не найден в базе");
         }
+        assert film != null;
         log.info("Информация о фильме {} под id {} изменена", film.getName(), film.getId());
-        return Optional.of(film);
+        return film;
     }
 
     public void likeFilm(int filmId, long userId){
@@ -69,8 +75,10 @@ public class FilmService {
         }
     }
 
-    public List<Optional<Film>> mostPopularFilms(int count){
-        return filmRepository.getPopular(count);
+    public List<Film> mostPopularFilms(int count){
+        return filmRepository.getPopular(count).stream()
+                .flatMap(Optional::stream)
+                .collect(Collectors.toList());
     }
 
 }

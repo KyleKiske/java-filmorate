@@ -14,7 +14,7 @@ public interface FilmRepository {
 
     Optional<Film> getFilmById(int id);
 
-    Optional<Film> createFilm(Film film);
+    Film createFilm(Film film);
 
     boolean updateFilm(Optional<Film> film);
 

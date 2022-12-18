@@ -11,6 +11,7 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -22,31 +23,35 @@ public class UserService {
         this.userRepository = userRepository;
     }
 
-    public List<Optional<User>> findAll() {
-        return userRepository.getUsers();
+    public List<User> findAll() {
+        return userRepository.getUsers().stream()
+                .flatMap(Optional::stream)
+                .collect(Collectors.toList());
     }
 
     private final static Logger log = LoggerFactory.getLogger(UserService.class);
 
-    public Optional<User> getUser(long userId){
+    public User getUser(long userId){
         final Optional<User> user = userRepository.getUserById(userId);
-        if (user.isEmpty()){
+        if (user.isPresent()) {
+            return user.get();
+        } else {
             throw new UserNotFoundException("Пользователя с id " + userId + " не существует");
         }
-        return user;
     }
 
-    public Optional<User> createUser(User user) {
+    public User createUser(User user) {
         return userRepository.createUser(user);
     }
 
-    public Optional<User> putUser(User user) {
+    public User putUser(User user) {
         boolean changed = userRepository.updateUser(user);
         if (!changed){
             log.warn("Пользователя с id " + user.getId() + " не существует");
             throw new UserNotFoundException("Пользователя с id " + user.getId() + " не существует");
+        } else {
+            return user;
         }
-        return Optional.ofNullable(user);
     }
 
     public void addFriend(Long id, Long friendId){
@@ -61,11 +66,15 @@ public class UserService {
         userRepository.deleteFriend(id, friendId);
     }
 
-    public List<Optional<User>> showFriends(Long id) {
-        return userRepository.getFriendsById(id);
+    public List<User> showFriends(Long id) {
+        return userRepository.getFriendsById(id).stream()
+                .flatMap(Optional::stream)
+                .collect(Collectors.toList());
     }
 
-    public List<Optional<User>> showMutualFriends(Long primaryId, Long secondaryId) {
-        return userRepository.getCommonFriends(primaryId, secondaryId);
+    public List<User> showMutualFriends(Long primaryId, Long secondaryId) {
+        return userRepository.getCommonFriends(primaryId, secondaryId).stream()
+                .flatMap(Optional::stream)
+                .collect(Collectors.toList());
     }
 }

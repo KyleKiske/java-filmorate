@@ -11,7 +11,7 @@ public interface UserRepository {
 
     Optional<User> getUserById(Long id);
 
-    Optional<User> createUser(User user);
+    User createUser(User user);
 
     List<Optional<User>> getUsers();
 

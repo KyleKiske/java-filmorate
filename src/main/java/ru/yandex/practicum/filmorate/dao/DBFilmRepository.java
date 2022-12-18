@@ -75,19 +75,18 @@ public class DBFilmRepository implements FilmRepository {
     @Override
     public Optional<Film> getFilmById(int id) {
         final String sqlQuery = "SELECT FILM.FILM_ID, FILM.NAME, " +
-                "DESCRIPTION, RELEASE_DATE, DURATION, MPA, MPA.MPA_NAME, G2.NAME FROM FILM " +
+                "FILM.DESCRIPTION, FILM.RELEASE_DATE, FILM.DURATION, FILM.MPA, MPA.MPA_NAME, G2.NAME FROM FILM " +
                 "JOIN MPA on MPA.MPA_ID = FILM.MPA " +
                 "LEFT JOIN FILM_GENRE FG on FILM.FILM_ID = FG.FILM_ID " +
                 "LEFT JOIN GENRE G2 on G2.GENRE_ID = FG.GENRE_ID " +
                 "WHERE FILM.FILM_ID = ?";
         List<Optional<Film>> filmsOptional = jdbcTemplate.query(sqlQuery, this::mapRowToFilm, id);
-        List<Film> films = new ArrayList<>();
-        for (Optional<Film> f: filmsOptional){
-            films.add(f.get());
-        }
-        if(filmsOptional.size() == 0) {
+        List<Film> films = filmsOptional.stream()
+                .flatMap(Optional::stream)
+                .collect(Collectors.toList());
+        if (films.isEmpty()){
             return Optional.empty();
-        } else if (filmsOptional.size() != 1){
+        } else if (films.size() != 1){
             Film film = films.get(0);
             List<Genre> genres = filterUniqueGenre(films);
             film.setGenres(genres);
@@ -98,7 +97,7 @@ public class DBFilmRepository implements FilmRepository {
     }
 
     @Override
-    public Optional<Film> createFilm(Film film) {
+    public Film createFilm(Film film) {
         Film validatedFilm = validationService.validateFilm(film);
         String sqlQuery = "insert into FILM (NAME, DESCRIPTION, RELEASE_DATE, DURATION, MPA) values (?,?,?,?,?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -119,7 +118,7 @@ public class DBFilmRepository implements FilmRepository {
             }
         }
         film.setId(Objects.requireNonNull(keyHolder.getKey()).intValue());
-        return Optional.of(film);
+        return film;
     }
 
     @Override
@@ -136,6 +135,7 @@ public class DBFilmRepository implements FilmRepository {
 
     @Override
     public boolean updateFilm(Optional<Film> optionalFilm) {
+        assert optionalFilm.isPresent();
         Film film = optionalFilm.get();
         boolean genreChanged;
         String sqlQuery = "update FILM " +

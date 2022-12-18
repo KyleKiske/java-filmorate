@@ -21,7 +21,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-
 @SpringBootTest
 @AutoConfigureTestDatabase(connection = EmbeddedDatabaseConnection.H2, replace = AutoConfigureTestDatabase.Replace.AUTO_CONFIGURED)
 @RequiredArgsConstructor(onConstructor_ = @Autowired)

@@ -60,7 +60,7 @@ public class DBUserRepository implements UserRepository {
                 .build());
     }
     @Override
-    public Optional<User> createUser(User user) {
+    public User createUser(User user) {
         User validatedUser = validationService.validateUser(user);
         String sqlQuery = "insert into USERS (EMAIL, LOGIN, NAME, BIRTHDAY) values (?,?,?,?)";
 
@@ -79,7 +79,7 @@ public class DBUserRepository implements UserRepository {
             return stmt;
         }, keyHolder);
         user.setId(Objects.requireNonNull(keyHolder.getKey()).longValue());
-        return Optional.of(user);
+        return user;
     }
 
     @Override
@@ -132,33 +132,19 @@ public class DBUserRepository implements UserRepository {
     @Override
     public List<Optional<User>> getCommonFriends(Long primaryId, Long secondaryId) {
         final String sqlQuery =
-                "SELECT PrimaryUserFriends.USER_ID, " +
-                        "PrimaryUserFriends.EMAIL, " +
-                        "PrimaryUserFriends.LOGIN, " +
-                        "PrimaryUserFriends.NAME, " +
-                        "PrimaryUserFriends.BIRTHDAY " +
-                        "FROM " +
-                            "(SELECT u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY " +
-                            "FROM FRIEND AS f " +
-                            "JOIN USERS AS u ON u.USER_ID = f.FRIEND_2 " +
-                            "WHERE f.FRIEND_1 = ? AND f.Confirmed = TRUE " +
-                                "UNION " +
-                            "SELECT u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY " +
-                            "FROM FRIEND AS F " +
-                            "JOIN USERS AS u ON u.USER_ID = f.FRIEND_1 " +
-                            "WHERE f.FRIEND_2 = ? AND f.confirmed = TRUE) AS PrimaryUserFriends " +
-                "JOIN " +
-                            "(SELECT u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY " +
-                            "FROM FRIEND AS f " +
-                            "JOIN USERS AS u ON u.USER_ID = f.FRIEND_2 " +
-                            "WHERE f.FRIEND_1 = ? AND f.Confirmed = TRUE " +
-                                "UNION " +
-                            "SELECT u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY " +
-                            "FROM Friend AS F " +
-                            "JOIN USERS AS u ON u.USER_ID = f.FRIEND_1 " +
-                            "WHERE f.FRIEND_2 = ? AND f.confirmed = TRUE) AS SecondaryUserFriends " +
-                "ON PrimaryUserFriends.USER_ID = SecondaryUserFriends.USER_ID";
-        return jdbcTemplate.query(sqlQuery, DBUserRepository::mapRowToUser, primaryId, primaryId, secondaryId, secondaryId);
+                "SELECT u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY FROM FRIEND f " +
+                    "join USERS u on f.FRIEND_2 = u.USER_ID " +
+                    "where f.FRIEND_1 IN (?,?) " +
+                    "GROUP BY u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY " +
+                    "HAVING COUNT(u.USER_ID) >= 2 " +
+            "UNION " +
+                "SELECT u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY FROM FRIEND f " +
+                    "join USERS u on f.FRIEND_1 = u.USER_ID " +
+                    "where f.FRIEND_2 IN (?,?) " +
+                    "GROUP BY u.USER_ID, u.EMAIL, u.LOGIN, u.NAME, u.BIRTHDAY " +
+                    "HAVING COUNT(u.USER_ID) >= 2";
+
+        return jdbcTemplate.query(sqlQuery, DBUserRepository::mapRowToUser, primaryId, secondaryId, primaryId, secondaryId);
     }
 
     @Override
