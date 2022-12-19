@@ -1,17 +1,20 @@
 package ru.yandex.practicum.filmorate.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Positive;
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 @Data
+@Builder
+@AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-public class Film implements Comparable<Film>{
+public class Film {
     @EqualsAndHashCode.Include
     private int id;
     @NotBlank
@@ -20,10 +23,7 @@ public class Film implements Comparable<Film>{
     private LocalDate releaseDate;
     @Positive
     private int duration;
-    private Set<Long> likes = new HashSet<>();
+    private MPA mpa;
+    private List<Genre> genres;
 
-    @Override
-    public int compareTo(Film o) {
-        return Integer.compare(o.likes.size(), this.likes.size());
-    }
 }
